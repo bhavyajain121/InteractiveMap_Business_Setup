@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAE Free Zones Map</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #header {
+            background-color: #f0f0f0;
+            padding: 10px;
+            text-align: center;
+        }
+        #logo {
+            max-height: 50px;
+        }
+        #content {
+            display: flex;
+            height: calc(100% - 70px);
+        }
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        #side-panel {
+            width: 300px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            overflow-y: auto;
+            display: none;
+        }
+        #freezone-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #freezone-image {
+            max-width: 100%;
+            margin-bottom: 10px;
+        }
+        #learn-more {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+        }
+        #search-container {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #search-input {
+            width: 200px;
+            padding: 5px;
+        }
+        #search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        .search-result {
+            padding: 5px;
+            cursor: pointer;
+        }
+        .search-result:hover {
+            background-color: #f0f0f0;
+        }
+        #map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+        .map-control-btn {
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .map-control-btn:hover {
+            background-color: #f0f0f0;
+        }
+        .map-control-btn img {
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
+        }
+        .map-theme-btn {
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .map-theme-btn:hover {
+            background-color: #f0f0f0;
+        }
+        .map-theme-btn img {
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
+        }
+        .toggle-btn {
+            background: url('toggle_button.png') no-repeat center;
+            width: 50px;
+            height: 25px;
+            background-size: contain;
+            border: none;
+            cursor: pointer;
+        }
+        #legend {
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #legend ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #legend li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        #legend span {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+        }
+        #filter-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #filter-select {
+            padding: 5px;
+        }
+        .leaflet-control-zoom {
+            bottom: 10px !important;
+            right: 10px !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <img src="logo_c2c.png" alt="Company Logo" id="logo">
+    </div>
+    <div id="content">
+        <div id="map"></div>
+        <div id="side-panel">
+            <h2 id="freezone-name"></h2>
+            <img id="freezone-image" src="" alt="Freezone Image">
+            <a id="learn-more" href="#" target="_blank">Click here to know more</a>
+        </div>
+    </div>
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Search free zones...">
+        <div id="search-results"></div>
+    </div>
+    <div id="map-controls">
+        <button class="map-control-btn" id="reset-view"><img src="reset_button.png" alt="Reset">Reset View</button>
+        <button class="map-control-btn" id="locate-me"><img src="locate_me.jpg" alt="Locate">Locate Me</button>
+        <button class="map-theme-btn" id="toggle-theme"><img src="toggle_button.png" alt="Theme">Toggle Theme</button>
+    </div>
+    <div id="legend">
+        <ul>
+            <li><span style="background-color: red;"></span>Abu Dhabi</li>
+            <li><span style="background-color: blue;"></span>Dubai</li>
+            <li><span style="background-color: green;"></span>Sharjah</li>
+            <li><span style="background-color: yellow;"></span>Fujairah</li>
+            <li><span style="background-color: purple;"></span>Ajman</li>
+            <li><span style="background-color: orange;"></span>Ras Al-Khaimah</li>
+            <li><span style="background-color: brown;"></span>Umm Al Quwain</li>
+        </ul>
+    </div>
+    <div id="filter-container">
+        <select id="filter-select">
+            <option value="">Select Emirate</option>
+            <option value="Abu Dhabi">Abu Dhabi</option>
+            <option value="Dubai">Dubai</option>
+            <option value="Sharjah">Sharjah</option>
+            <option value="Fujairah">Fujairah</option>
+            <option value="Ajman">Ajman</option>
+            <option value="Ras Al-Khaimah">Ras Al-Khaimah</option>
+            <option value="Umm Al Quwain">Umm Al Quwain</option>
+        </select>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+    <script>
+        const freezones = [
+            { name: "Masdar City Free Zone", location: "Abu Dhabi", category: null, latitude: 24.426932243494182, longitude: 54.61500045376603, image_url: "https://www.moec.gov.ae/documents/20121/196821/Masdar-City-%281%29.jpg/f16b9721-e018-bb04-5010-3dcf58ad364c", official_url: "https://www.moec.gov.ae/en/-/masdar-city-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai Maritime City", location: "Dubai", category: "Renewable Energy", latitude: 25.270911, longitude: 55.263264, image_url: "https://www.moec.gov.ae/documents/20121/193445/Dubai-Maritime-City-%281%29.jpg/e56d31cd-7a18-e3e2-5efd-1b49eb80ee56", official_url: "https://www.moec.gov.ae/en/-/dubai-maritime-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Sharjah Publishing City", location: "Sharjah", category: null, latitude: 25.345131, longitude: 55.386189, image_url: "https://www.moec.gov.ae/documents/20121/231694/Sharjah%20Publishing%20City%20%281%29.jpg/be65017e-5580-5eb7-bed3-07aa54b2d002", official_url: "https://www.moec.gov.ae/en/-/sharjah-publishing-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Sharjah Publishing City", location: "Sharjah", category: null, latitude: 25.345131, longitude: 55.386189, image_url: "https://www.moec.gov.ae/documents/20121/231694/Sharjah%20Publishing%20City%20%281%29.jpg/be65017e-5580-5eb7-bed3-07aa54b2d002", official_url: "https://www.moec.gov.ae/en/-/sharjah-publishing-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Hamriyah Free Zone", location: "Sharjah", category: "Maritime Services", latitude: 25.462654, longitude: 55.483604, image_url: "https://www.moec.gov.ae/documents/20121/231564/Hamriya%20Free%20Zone%20%281%29.jpg/543bc7a8-a945-393e-47c4-af7ab9a38e31", official_url: "https://www.moec.gov.ae/en/-/hamriyah-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai Commercity", location: "Dubai", category: null, latitude: 25.267410, longitude: 55.292680, image_url: "https://www.moec.gov.ae/documents/20121/231371/Dubai%20CommerCity%20%281%29.jpg/f19ecfab-130b-5eea-b932-dcbef3a85b8e", official_url: "https://www.moec.gov.ae/en/-/dubai-commercity?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Khalifa Port Free Trade Zone", location: "Abu Dhabi", category: null, latitude: 24.809994, longitude: 54.649545, image_url: "https://www.moec.gov.ae/documents/20121/231141/Khalifa%20Port%20Free%20Trade%20Zone%20%281%29.jpg/37dfab4d-9f16-aa18-9984-24a0900f026a", official_url: "https://www.moec.gov.ae/en/-/khalifa-port-free-trade-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Creative City Free Zone", location: "Fujairah", category: null, latitude: 25.122952, longitude: 56.323037, image_url: "https://www.moec.gov.ae/documents/20121/191385/Creative-City-Free-Zone-Authority-%281%29.jpg/4d94e826-1a27-3181-84b2-3f9c2a2f8e7c", official_url: "https://www.moec.gov.ae/en/-/creative-city-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Ajman Free Zone", location: "Ajman", category: null, latitude: 25.407090, longitude: 55.453458, image_url: "https://www.moec.gov.ae/documents/20121/191207/Ajman-FreeZone-%285%29.jpg/de27c1c6-f9d3-e621-9405-d8cb52712e7a", official_url: "https://www.moec.gov.ae/en/-/ajman-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Fujairah Free Zone", location: "Fujairah", category: null, latitude: 25.172572, longitude: 56.350979, image_url: "https://www.moec.gov.ae/documents/20121/196232/Fujairah-Free-Zone-%284%29.jpg/d4d3c818-bd81-3721-4b8b-e7e850d0e6f8", official_url: "https://www.moec.gov.ae/en/-/fujairah-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai South", location: "Dubai", category: null, latitude: 24.914500, longitude: 55.119262, image_url: "https://www.moec.gov.ae/documents/20121/195245/Dubai-South-%284%29.jpg/10a64c32-386d-e1c2-04cd-8466750418aa", official_url: "https://www.moec.gov.ae/en/-/dubai-south?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai World Trade Centre", location: "Dubai", category: null, latitude: 25.223569, longitude: 55.286945, image_url: "https://www.moec.gov.ae/documents/20121/195939/DWTC-%285%29.jpg/6c629b7b-c011-5efe-84a0-957da88bfe61", official_url: "https://www.moec.gov.ae/en/-/dubai-world-trade-centre?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai Design District", location: "Dubai", category: "Trade and Logistics", latitude: 25.186717, longitude: 55.301880, image_url: "https://www.moec.gov.ae/documents/20121/192216/Dubai-Design-District-%2816%29.jpg/7e73aff4-2726-4f6d-9859-67b1c464d0d9", official_url: "https://www.moec.gov.ae/en/-/dubai-design-district?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai Science Park", location: "Dubai", category: null, latitude: 25.074713, longitude: 55.240321, image_url: "https://www.moec.gov.ae/documents/20121/194781/Dubai-Science-Park-%282%29.jpg/480fd082-55d0-91cc-f672-2946ba37ca5b", official_url: "https://www.moec.gov.ae/en/-/dubai-science-park?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "International Humanitarian City", location: "Dubai", category: "Creative Design", latitude: 24.897131, longitude: 55.071698, image_url: "https://www.moec.gov.ae/documents/20121/196320/International-Humanitarian-City-%2812%29.jpg/b5de4bf4-f3d9-fed1-4cbb-0a2f52a0ddeb", official_url: "https://www.moec.gov.ae/en/-/international-humanitarian-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai Multi Commodities Centre", location: "Dubai", category: null, latitude: 25.073707, longitude: 55.147339, image_url: "https://www.moec.gov.ae/documents/20121/193808/Dubai-Multi-Commodities-Centre-%284%29.jpg/43eb6d0e-d56f-ab01-451c-54b4078d1f60", official_url: "https://www.moec.gov.ae/en/-/dubai-multi-commodities-centre?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai Outsource City", location: "Dubai", category: "Trade", latitude: 25.129371, longitude: 55.424724, image_url: "https://www.moec.gov.ae/documents/20121/193964/Dubai-Outsource-City-%281%29.jpg/87e6fd39-f8c3-08b7-5d82-fd078a1bd987", official_url: "https://www.moec.gov.ae/en/-/dubai-outsource-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai Silicon Oasis", location: "Dubai", category: null, latitude: 25.126368, longitude: 55.381640, image_url: "https://www.moec.gov.ae/documents/20121/195005/Dubai-Silicon-Oasis-%286%29.jpg/1db00edc-c0f3-3bbf-71c4-ac3d6db8e4ee", official_url: "https://www.moec.gov.ae/en/-/dubai-silicon-oasis?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Sharjah Media City - Shams", location: "Sharjah", category: "Trade and Logistics", latitude: 25.262047, longitude: 55.343012, image_url: "https://www.moec.gov.ae/documents/20121/197985/Sharjah-Media-City-%2811%29.jpg/b626899f-776d-ec50-70a8-27becd4bb155", official_url: "https://www.moec.gov.ae/en/-/sharjah-media-city-shams?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Sharjah Airport International Free Zone", location: "Sharjah", category: null, latitude: 25.330795, longitude: 55.490563, image_url: "https://www.moec.gov.ae/documents/20121/197685/Sharjah-Airport-Freezone-Saif-%287%29.jpg/bb75cd3e-3161-418d-fb5b-28bc76d06299", official_url: "https://www.moec.gov.ae/en/-/sharjah-airport-international-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Abu Dhabi Airports Free Zone", location: "Abu Dhabi", category: "Artificial Intelligence and Futuristic Activities", latitude: 24.429545, longitude: 54.640876, image_url: "https://www.moec.gov.ae/documents/20121/190563/Abu-Dhabi-Airport-Freezone-%282%29.jpg/90a64f3c-5772-f201-5fca-286096dd4473", official_url: "https://www.moec.gov.ae/en/-/abu-dhabi-airports-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D1" 
+            },
+            {name: "Dubai International Financial Centre", location: "Dubai", category: "Financial Hub", latitude: 25.211154, longitude: 55.279532, image_url: "https://www.moec.gov.ae/documents/20121/191422/DIFC-%286%29.jpg/39e81062-ce9c-06bf-ecc4-cf7d7943a848", official_url: "https://www.moec.gov.ae/en/-/dubai-international-financial-centre?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Abu Dhabi Global Market", location: "Abu Dhabi", category: "Financial Hub", latitude: 24.501503, longitude: 54.388680, image_url: "https://www.moec.gov.ae/documents/20121/190686/Abu-Dhabi-Global-Market-%281%29.jpg/9c7d2f4f-561f-0113-b998-8afbb0b2f789", official_url: "https://www.moec.gov.ae/en/-/abu-dhabi-global-market?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Dubai Internet City", location: "Dubai", category: "Technology", latitude: 25.098001, longitude: 55.163233, image_url: "https://www.moec.gov.ae/documents/20121/193133/Dubai-Internet-City-%289%29.jpg/f23997a7-ecd2-08e6-0f4c-15a54ee50907", official_url: "https://www.moec.gov.ae/en/-/dubai-internet-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "twofour54", location: "Abu Dhabi", category: "Media", latitude: 24.461123, longitude: 54.601185, image_url: "https://www.moec.gov.ae/documents/20121/191016/Abu-Dhabi-Two-four-54-%281%29.jpg/2b779b3b-7c3c-ac5f-c832-f41391954fc2", official_url: "https://www.moec.gov.ae/en/-/twofour54-1?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Umm Al-Quwain Free Zone", location: "Umm Al Quwain", category: "MixedNAuse", latitude: 25.554341, longitude: 55.743231, image_url: "https://www.moec.gov.ae/documents/20121/198244/UAQ-FREE-ZONE-%282%29.jpg/5ec28790-0be0-5956-9ba9-4fd4a631cb0f", official_url: "https://www.moec.gov.ae/en/-/umm-al-quwain-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Ajman Media City Free Zone", location: "Ajman", category: "Media", latitude: 25.404880, longitude: 55.483620, image_url: "https://www.moec.gov.ae/documents/20121/191296/Ajman-Media-City-Freezone-%284%29.jpg/b1b482fc-a055-54a8-d2d0-fccbc327dd24", official_url: "https://www.moec.gov.ae/en/-/ajman-media-city-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Meydan Free Zone", location: "Dubai", category: "MixedNAuse", latitude: 25.156711, longitude: 55.300234, image_url: "https://www.moec.gov.ae/documents/20121/197148/Meydan-Freezone-%288%29.jpg/75f9cdf8-2429-709d-e44d-ce68e343075e", official_url: "https://www.moec.gov.ae/en/-/meydan-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Dubai Healthcare City", location: "Dubai", category: "Healthcare", latitude: 25.231794, longitude: 55.324085, image_url: "https://www.moec.gov.ae/documents/20121/192871/Dubai-Healthcare-City-%285%29.jpg/d035906c-399b-0bce-f6f2-78b6a19542c2", official_url: "https://www.moec.gov.ae/en/-/dubai-healthcare-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Dubai International Academic City", location: "Dubai", category: "Academic", latitude: 25.114424, longitude: 55.408665, image_url: "https://www.moec.gov.ae/documents/20121/191682/Dubai-Academic-City-%282%29.jpg/5086609d-f6f4-d3dd-30c2-25b9264600eb", official_url: "https://www.moec.gov.ae/en/-/dubai-international-academic-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Dubai Production City", location: "Dubai", category: "Media", latitude: 25.031981, longitude: 55.189882, image_url: "https://www.moec.gov.ae/documents/20121/194602/Dubai-Production-City-%281%29.jpg/4bf35a1c-d847-6048-a9cf-cfda2156969b", official_url: "https://www.moec.gov.ae/en/-/dubai-production-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Dubai Studio City", location: "Dubai", category: "Media", latitude: 25.039814, longitude: 55.248436, image_url: "https://www.moec.gov.ae/documents/20121/195646/Dubai-Studio-City-%281%29.jpg/bd1aea74-59d2-7a75-443a-4e16d63aba9b", official_url: "https://www.moec.gov.ae/en/-/dubai-studio-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Dubai Media City", location: "Dubai", category: "Media", latitude: 25.097064, longitude: 55.157638, image_url: "https://www.moec.gov.ae/documents/20121/193601/Dubai-Media-City-%286%29.jpg/965c73ad-8fa8-5a01-5879-b14da394615e", official_url: "https://www.moec.gov.ae/en/-/dubai-media-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "DAFZ INDUSTRIAL PARK", location: "Dubai", category: null, latitude: 25.288800, longitude: 55.403073, image_url: "https://www.moec.gov.ae/documents/84353/1893188/%283%29%20%20%D9%85%D9%86%D8%B8%D9%82%D8%A9%20%D8%AF%D8%A7%D9%81%D8%B2%20%20%D8%A7%D9%84%D8%B5%D9%86%D8%A7%D8%B9%D9%8A%D8%A9.jpg/7e23d831-9ddd-ca94-99a4-92366ad5dd5d", official_url: "https://www.moec.gov.ae/en/-/dafz-industrial-park?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "The Free zone dedicated to the military and security sector in Tawazun Industrial Park", location: "Abu Dhabi", category: null, latitude: 24.690714, longitude: 54.746146, image_url: "https://www.moec.gov.ae/documents/84353/1893049/%281%29%20%D8%A7%D9%84%D9%85%D9%86%D8%B7%D9%82%D8%A9%20%D8%A7%D9%84%D8%AD%D8%B1%D8%A9%20%D8%A7%D9%84%D9%85%D8%AA%D8%AE%D8%B5%D8%B5%D8%A9%20%D8%A8%D9%82%D8%B7%D8%A7%D8%B9%20%D8%A7%D9%84%D8%AF%D9%81%D8%A7%D8%B9%20%D9%88%D8%A7%D9%84%D8%A3%D9%85%D9%86%20%D8%B6%D9%85%D9%86%20%D9%85%D8%AC%D9%85%D8%B9%20%D8%AA%D9%88%D8%A7%D8%B2%D9%86%20%D8%A7%D9%84%D8%B5%D9%86%D8%A7%D8%B9%D9%8A.jpg/43933e63-0253-2580-62b6-fc78a3a29ee4", official_url: "https://www.moec.gov.ae/en/-/the-free-zone-dedicated-to-the-military-and-security-sector-in-tawazun-industrial-park.?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Dubai Financial Services Authority (DFSA)", location: "Dubai", category: null, latitude: 25.210805, longitude: 55.279407, image_url: "https://www.moec.gov.ae/documents/84353/1919013/%285%29%20%20%D8%B3%D9%84%D8%B7%D8%A9%20%D8%AF%D8%A8%D9%8A%20%D9%84%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%20%D8%A7%D9%84%D9%85%D8%A7%D9%84%D9%8A%D8%A9.jpg/fb9872c3-fb1b-9cbf-a488-2cf2ba2283b4", official_url: "https://www.moec.gov.ae/en/-/dubai-financial-services-authority-dfsa-?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Gold & Diamond Park", location: "Dubai", category: null, latitude: 25.126857, longitude: 55.210211, image_url: "https://www.moec.gov.ae/documents/84353/1919149/%287%29%20%D9%85%D8%AC%D9%85%D8%B9%20%D8%A7%D9%84%D8%B0%D9%87%D8%A8%20%D9%88%D8%A7%D9%84%D8%A3%D9%84%D9%85%D8%A7%D8%B3.jpg/18a43470-7015-12c5-e6f1-a46a783c5f2f", official_url: "https://www.moec.gov.ae/en/-/gold-diamond-park?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "The Sharjah Research, Technology, and Innovation Park", location: "Sharjah", category: null, latitude: 25.323005, longitude: 55.488152, image_url: "https://www.moec.gov.ae/documents/84353/1919299/%2810%29%20%D9%85%D8%AC%D9%85%D8%B9%20%D8%A7%D9%84%D8%B4%D8%A7%D8%B1%D9%82%D8%A9%20%D9%84%D9%84%D8%A8%D8%AD%D9%88%D8%AB%20%D9%88%D8%A7%D9%84%D8%AA%D9%83%D9%86%D9%88%D9%84%D9%88%D8%AC%D9%8A%D8%A7%20%D9%88%D8%A7%D9%84%D8%A7%D8%A8%D8%AA%D9%83%D8%A7%D8%B1.jpg/0c9f5392-8c7f-8748-3f97-40f5142945b1", official_url: "https://www.moec.gov.ae/en/-/the-sharjah-research-technology-and-innovation-park?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "DUBAI AIRPORT FREEZONE", location: "Dubai", category: null, latitude: 25.260573, longitude: 55.372877, image_url: "https://www.moec.gov.ae/documents/84353/1918913/%282%29%20%D8%A7%D9%84%D9%85%D9%86%D8%B7%D9%82%D8%A9%20%D8%A7%D9%84%D8%AD%D8%B1%D8%A9%20%D8%A8%D9%85%D8%B7%D8%A7%D8%B1%20%D8%AF%D8%A8%D9%8A.jpg/d51b56b2-173f-81df-186e-01e6a4415920", official_url: "https://www.moec.gov.ae/en/-/dubai-airport-freezone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Sharjah Oasis for Technology and Innovation (SOTI)", location: "Sharjah", category: null, latitude: 25.323800, longitude: 55.487832, image_url: "https://www.moec.gov.ae/documents/84353/1919346/%2811%29%20%D9%88%D8%A7%D8%AD%D8%A9%20%D8%A7%D9%84%D8%B4%D8%A7%D8%B1%D9%82%D8%A9%20%D9%84%D9%84%D8%AA%D9%83%D9%86%D9%88%D9%84%D9%88%D8%AC%D9%8A%D8%A7%20%D9%88%D8%A7%D9%84%D8%A7%D8%A8%D8%AA%D9%83%D8%A7%D8%B1.jpg/4acb5aff-c276-d2bd-7c06-13f485a30f44", official_url: "https://www.moec.gov.ae/en/-/sharjah-oasis-for-technology-and-innovation-soti-?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Dubai Knowledge Park", location: "Dubai", category: null, latitude: 25.103502, longitude: 55.162557, image_url: "https://www.moec.gov.ae/documents/84353/1919199/%288%29%20%D9%85%D8%AC%D9%85%D8%B9%20%D8%AF%D8%A8%D9%8A%20%D9%84%D9%84%D9%85%D8%B9%D8%B1%D9%81%D8%A9.jpg/7b5a5849-56b2-bb99-1e99-b1edc30424e1", official_url: "https://www.moec.gov.ae/en/-/dubai-knowledge-park?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D2" 
+            },
+            {name: "Sharjah Healthcare City", location: "Sharjah", category: null, latitude: 25.310435, longitude: 55.569266, image_url: "https://www.moec.gov.ae/documents/84353/1919249/%289%29%20%D9%85%D8%AF%D9%8A%D9%86%D8%A9%20%D8%A7%D9%84%D8%B4%D8%A7%D8%B1%D9%82%D8%A9%20%D9%84%D9%84%D8%B1%D8%B9%D8%A7%D9%8A%D8%A9%20%D8%A7%D9%84%D8%B5%D8%AD%D9%8A%D8%A9.jpg/15feb8aa-b5df-74dc-b84c-73737631c466", official_url: "https://www.moec.gov.ae/en/-/sharjah-healthcare-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D3" 
+            },
+            {name: "Ras AlKhaimah Maritime", location: "Ras Al-Khaimah", category: null, latitude: 25.815282, longitude: 55.955950, image_url: "https://www.moec.gov.ae/documents/84353/1919391/%2812%29%20%D9%85%D8%AF%D9%8A%D9%86%D8%A9%20%D8%B1%D8%A3%D8%B3%20%D8%A7%D9%84%D8%AE%D9%8A%D9%85%D8%A9%20%D8%A7%D9%84%D9%85%D9%84%D8%A7%D8%AD%D9%8A%D8%A9.jpg/e4a89811-6053-0d89-698a-4a4e972dcd52", official_url: "https://www.moec.gov.ae/en/-/ras-alkhaimah-maritime?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D3" 
+            },
+            {name: "Dubai Auto Zone (DAZ)", location: "Dubai", category: null, latitude: 25.173442, longitude: 55.377449, image_url: "https://www.moec.gov.ae/documents/84353/1919105/%286%29%20%D9%85%D9%86%D8%B7%D9%82%D8%A9%20%D8%AF%D8%A8%D9%8A%20%D9%84%D9%84%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA.jpg/1d4b41bf-5360-b28c-71e3-7b107ce3e8cd", official_url: "https://www.moec.gov.ae/en/-/dubai-auto-zone-daz-?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D3" 
+            },
+            {name: "Ras Al Khaimah Economic Zones (RAKEZ)", location: "Ras Al-Khaimah", category: null, latitude: 25.801179, longitude: 55.968335, image_url: "https://www.moec.gov.ae/documents/84353/1919490/RAKEZ%20Business%20Centre%201.jpg/2b23ebd6-8e4b-fa61-4120-7e684500ce72", official_url: "https://www.moec.gov.ae/en/-/ras-al-khaimah-economic-zones-rakez-?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D3" 
+            },
+            {name: "Jebel Ali Free Zone", location: "Dubai", category: "Economic Activities", latitude: 24.985873, longitude: 55.044269, image_url: "https://www.moec.gov.ae/documents/20121/196614/JAFZA-%283%29.jpg/883d9421-a77a-60ef-a24a-3bcfccd75b83", official_url: "https://www.moec.gov.ae/en/-/jebel-ali-free-zone?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D3" 
+            },
+            {name: "Expo City Dubai", location: "Dubai", category: null, latitude: 24.961089, longitude: 55.150777, image_url: "https://www.moec.gov.ae/documents/84353/1918969/%284%29%20%D9%85%D8%AF%D9%8A%D9%86%D8%A9%20%D8%A7%D9%83%D8%B3%D8%A8%D9%88%20%D8%AF%D8%A8%D9%8A.jpg/ea7e4317-ffbd-8446-3eeb-57e8d6a94221", official_url: "https://www.moec.gov.ae/en/-/dubai-expo-city?p_l_back_url=%2Fen%2Ffree-zones%3Fstart%3D3" 
+            }  
+            // Add your freezones data here
+        ];
+
+        const emirateColors = {
+            "Abu Dhabi": "red",
+            "Dubai": "blue",
+            "Sharjah": "green",
+            "Fujairah": "yellow",
+            "Ajman": "purple",
+            "Ras Al-Khaimah": "orange",
+            "Umm Al Quwain": "brown"
+        };
+
+        let map, markers, currentTheme = 'light';
+        const themes = {
+            light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        };
+
+        function initMap() {
+            map = L.map('map').setView([24.7136, 54.3066], 7);
+            L.tileLayer(themes.light, {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            markers = L.markerClusterGroup();
+
+            freezones.forEach(freezone => {
+                const markerColor = emirateColors[freezone.location] || 'gray';
+                const marker = L.marker([freezone.latitude, freezone.longitude], {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        html: `<div style="background-color: ${markerColor}; width: 25px; height: 25px; border-radius: 50%;"></div>`
+                    })
+                }).bindPopup(freezone.name);
+                
+                marker.on('click', () => updateSidePanel(freezone));
+                markers.addLayer(marker);
+            });
+
+            map.addLayer(markers);
+        }
+
+        function updateSidePanel(freezone) {
+            document.getElementById('side-panel').style.display = 'block';
+            document.getElementById('freezone-name').textContent = freezone.name;
+            document.getElementById('freezone-image').src = freezone.image_url;
+            document.getElementById('learn-more').href = freezone.official_url;
+        }
+
+        function setupSearch() {
+            const searchInput = document.getElementById('search-input');
+            const searchResults = document.getElementById('search-results');
+
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.toLowerCase();
+                const results = freezones.filter(fz => 
+                    fz.name.toLowerCase().includes(query) ||
+                    (fz.category && fz.category.toLowerCase().includes(query))
+                );
+
+                searchResults.innerHTML = '';
+                results.forEach(fz => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result';
+                    div.textContent = fz.name;
+                    div.addEventListener('click', () => {
+                        searchInput.value = fz.name;
+                        searchResults.style.display = 'none';
+                        map.setView([fz.latitude, fz.longitude], 15);
+                        updateSidePanel(fz);
+                    });
+                    searchResults.appendChild(div);
+                });
+
+                searchResults.style.display = results.length > 0 ? 'block' : 'none';
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!searchResults.contains(e.target) && e.target !== searchInput) {
+                    searchResults.style.display = 'none';
+                }
+            });
+        }
+
+        function setupMapControls() {
+            document.getElementById('reset-view').addEventListener('click', () => {
+                map.setView([24.7136, 54.3066], 7);
+                document.getElementById('side-panel').style.display = 'none';
+            });
+
+            document.getElementById('locate-me').addEventListener('click', () => {
+                map.locate({setView: true, maxZoom: 16});
+            });
+
+            document.getElementById('toggle-theme').addEventListener('click', () => {
+                currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+                map.eachLayer(layer => {
+                    if (layer instanceof L.TileLayer) {
+                        map.removeLayer(layer);
+                    }
+                });
+                L.tileLayer(themes[currentTheme], {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+            });
+        }
+
+        function setupFilter() {
+            const filterSelect = document.getElementById('filter-select');
+
+            filterSelect.addEventListener('change', () => {
+                const selectedEmirate = filterSelect.value;
+                const filteredZones = freezones.filter(fz => fz.location === selectedEmirate);
+                
+                if (filteredZones.length > 0) {
+                    const firstZone = filteredZones[0];
+                    map.setView([firstZone.latitude, firstZone.longitude], 12);
+                    
+                    filteredZones.forEach(fz => {
+                        const marker = markers.getLayers().find(m => m.getLatLng().lat === fz.latitude && m.getLatLng().lng === fz.longitude);
+                        if (marker) {
+                            marker.openPopup();
+                        }
+                    });
+                }
+            });
+        }
+
+        window.onload = () => {
+            initMap();
+            setupSearch();
+            setupMapControls();
+            setupFilter();
+        };
+    </script>
+</body>
+</html>
+
